@@ -1,54 +1,48 @@
 // Declare the map variable outside the function.
-let earthquakeMap; 
+let earthquakeMap;
 
 // Declare the markerColor variable outside the function.
 let markerColor;
 
-// Declare the markerColor variable outside the function.
+// Declare the markerColor variables outside the function.
 let minAltitude;
 let maxAltitude;
 
+// Declare the circleMarker, fillColor, and altitude variables outside the function.
+let circleMarker;
+let fillColor;
+let altitude;
+
+// Declare an array to hold earthquake markers.
+let earthquakeMarkers = [];
+
 // Create the createMap function.
 function createMap() {
-  // // Check if the map container already exists.
-  // if (!earthquakeMap) {
-  //   // Create the map.
-    earthquakeMap = L.map("map", {
-      center: [41.724674, -99.428860],
-      zoom: 5,
-    });
+  earthquakeMap = L.map("map", {
+    center: [41.724674, -99.428860],
+    zoom: 5,
+  });
 
-    // Create the tile layer that will be the background of our map.
-    let base = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-    }).addTo(earthquakeMap);
+  // Create the tile layer that will be the background of our map.
+  let base = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+  }).addTo(earthquakeMap);
 
-    // Initialize an array to hold the earthquake markers.
-    let earthquakeMarkers = [];
+  // Perform an API call to the USGS Earthquake API to get the earthquake data for the past 7 days
+  url = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_week.geojson";
+  d3.json(url).then(function (response) {
+    console.log(response);
 
-    // Create a layer control, and pass it baseMaps and overlayMaps. Add the layer control to the map.
-    let baseMaps = {
-      "base": base
-    };
+    // Call the createMarkers function and pass the earthquakeMap and earthquakeMarkers.
+    createMarkers(response.features, earthquakeMap);
 
-    control = L.control.layers(baseMaps, {}).addTo(earthquakeMap);
-
-    // Perform an API call to the USGS Earthquake API to get the earthquake data for the past 7 days
-    url = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_week.geojson";
-    d3.json(url).then(function (response) {
-      console.log(response);
-
-      // Call the createMarkers function and pass the earthquakeMap and earthquakeMarkers.
-      createMarkers(response.features, earthquakeMap, earthquakeMarkers);
-
-      // Call the createLegend function and pass the earthquakeMap.
-      createLegend(earthquakeMap, markerColor);
-    });
-  }
-// }
+    // Call the createLegend function and pass the earthquakeMap.
+    createLegend(earthquakeMap);
+  });
+}
 
 // Create the createMarkers function.
-function createMarkers(data, earthquakeMap, earthquakeMarkers) {
+function createMarkers(data, earthquakeMap) {
   // Calculate the minimum and maximum altitude values in the earthquake data.
   minAltitude = d3.min(data, (d) => d.geometry.coordinates[2]);
   maxAltitude = d3.max(data, (d) => d.geometry.coordinates[2]);
@@ -59,27 +53,19 @@ function createMarkers(data, earthquakeMap, earthquakeMarkers) {
   // Loop through the earthquake data.
   for (let i = 0; i < data.length; i++) {
     // Extract altitude from the coordinates.
-    let altitude = data[i].geometry.coordinates[2];
+    altitude = data[i].geometry.coordinates[2];
 
-    // Get the marker color based on altitude using the gradient scale.
-    let fillColor = markerColor(altitude);
-
-    // For each earthquake, create a circle marker, and set the color.
-    let circleMarker = L.circleMarker(
+    // For each earthquake, create a circle marker.
+    circleMarker = L.circleMarker(
       [data[i].geometry.coordinates[1], data[i].geometry.coordinates[0]],
       {
-        radius: data[i].properties.mag * 3, // You can adjust the radius as needed.
+        radius: data[i].properties.mag * 3,
         fillOpacity: 0.75,
-        fillColor: fillColor, // Set the marker color.
       }
     );
 
-    // Bind a popup with the earthquake's place.
-    circleMarker.bindPopup(
-      `<h3>Magnitude: ${data[i].properties.mag}</h3>` +
-      `<h3>Location: ${data[i].properties.place}</h3>` +
-      `<h3>Altitude: ${data[i].geometry.coordinates[2]}</h3>`
-    );
+    // Store the altitude as a property of the marker.
+    circleMarker.altitude = altitude;
 
     // Add the circle marker to the earthquakeMarkers array.
     earthquakeMarkers.push(circleMarker);
@@ -88,15 +74,12 @@ function createMarkers(data, earthquakeMap, earthquakeMarkers) {
   // Create a layer group from the earthquakeMarkers array and add it to the map.
   let earthquakeLayer = L.layerGroup(earthquakeMarkers);
   earthquakeLayer.addTo(earthquakeMap);
-
-  // Add the earthquake markers layer to the layer control.
-  control.addOverlay(earthquakeLayer, "Earthquake Markers");
 }
 
 // Create the createLegend function.
 function createLegend(earthquakeMap) {
   // Define altitude ranges and corresponding labels.
-  legendData = [
+  let legendData = [
     { label: '-10 - 10', min: -10, max: 10 },
     { label: '10 - 30', min: 10, max: 30 },
     { label: '30 - 50', min: 30, max: 50 },
@@ -108,7 +91,7 @@ function createLegend(earthquakeMap) {
   // Create a legend control.
   let legend = L.control({ position: 'bottomright' });
 
-  // Define the legend content.
+  // When the legend control is added, insert a div with the class of "info legend".
   legend.onAdd = function () {
     let div = L.DomUtil.create('div', 'info legend');
     div.innerHTML += '<h4>Altitude Ranges</h4>';
@@ -123,8 +106,33 @@ function createLegend(earthquakeMap) {
 
   // Add the legend to the map.
   legend.addTo(earthquakeMap);
+
+  // Call the updateMapMarkers function to update marker colors.
+  updateMapMarkers();
 }
 
+// Function to update map markers' colors based on legendData.
+function updateMapMarkers() {
+  for (let i = 0; i < earthquakeMarkers.length; i++) {
+    let altitude = earthquakeMarkers[i].altitude;
+    let color;
+
+    // Check if altitude is lower than -10 and set the color for '-10 - 10'.
+    if (altitude < -10) {
+      color = markerColor(-10);
+    }
+    // Check if altitude is higher than 90 and set the color for '90+'.
+    else if (altitude > 90) {
+      color = markerColor(90);
+    }
+    // For other altitudes, calculate the color as usual.
+    else {
+      color = markerColor(altitude);
+    }
+
+    earthquakeMarkers[i].setStyle({ fillColor: color });
+  }
+}
 
 // Initialize the web page
 createMap();
