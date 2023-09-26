@@ -4,7 +4,7 @@ let earthquakeMap;
 // Declare the markerColor variable outside the function.
 let markerColor;
 
-// Declare the markerColor variables outside the function.
+// Declare the minAltitude maxAltitude variables outside the function.
 let minAltitude;
 let maxAltitude;
 
@@ -28,21 +28,59 @@ function createMap() {
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
   }).addTo(earthquakeMap);
 
-  // Perform an API call to the USGS Earthquake API to get the earthquake data for the past 7 days
+  // Create a layer group for earthquake markers.
+  let earthquakeLayer = L.layerGroup();
+
+  // Create the baseMaps object to hold the empty map layer.
+  let baseMaps = {
+    "Empty Map": base
+  };
+
+  // Create an overlayMaps object to hold the earthquake markers layer.
+  let overlayMaps = {
+    "Earthquake": earthquakeLayer
+  };
+
+  // Create a layer control, and pass it baseMaps and overlayMaps. Add the layer control to the map.
+  L.control.layers(baseMaps, overlayMaps, {
+    collapsed: true
+  }).addTo(earthquakeMap);
+
+  // Perform an API call to the USGS Earthquake API to get the earthquake data for the past 7 days.
   url = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_week.geojson";
   d3.json(url).then(function (response) {
     console.log(response);
 
-    // Call the createMarkers function and pass the earthquakeMap and earthquakeMarkers.
-    createMarkers(response.features, earthquakeMap);
+    // Call the createMarkers function and pass the earthquakeLayer.
+    createMarkers(response.features, earthquakeLayer);
 
-    // Call the createLegend function and pass the earthquakeMap.
-    createLegend(earthquakeMap);
+    // Add the legend to the map.
+    createLegend();
+
+      // Set the "Earthquake" layer to be automatically on when the map is loaded.
+  earthquakeLayer.addTo(earthquakeMap);
+
+    // Set up event listeners to control legend visibility.
+    earthquakeMap.on('overlayadd', function (eventLayer) {
+      if (eventLayer.name === 'Earthquake') {
+        earthquakeMap.addControl(legend);
+      }
+    });
+
+    earthquakeMap.on('overlayremove', function (eventLayer) {
+      if (eventLayer.name === 'Earthquake') {
+        earthquakeMap.removeControl(legend);
+      }
+    });
+    
+  // Initially, add the legend when the "Earthquake" layer is turned on.
+  earthquakeMap.addControl(legend);
+
   });
 }
 
 // Create the createMarkers function.
-function createMarkers(data, earthquakeMap) {
+function createMarkers(data, earthquakeLayer) {
   // Calculate the minimum and maximum altitude values in the earthquake data.
   minAltitude = d3.min(data, (d) => d.geometry.coordinates[2]);
   maxAltitude = d3.max(data, (d) => d.geometry.coordinates[2]);
@@ -61,23 +99,20 @@ function createMarkers(data, earthquakeMap) {
       {
         radius: data[i].properties.mag * 3,
         fillOpacity: 0.75,
+        fillColor: markerColor(altitude), // Set the marker color based on altitude.
       }
     );
 
     // Store the altitude as a property of the marker.
     circleMarker.altitude = altitude;
 
-    // Add the circle marker to the earthquakeMarkers array.
-    earthquakeMarkers.push(circleMarker);
+    // Add the circle marker to the earthquakeLayer.
+    circleMarker.addTo(earthquakeLayer);
   }
-
-  // Create a layer group from the earthquakeMarkers array and add it to the map.
-  let earthquakeLayer = L.layerGroup(earthquakeMarkers);
-  earthquakeLayer.addTo(earthquakeMap);
 }
 
 // Create the createLegend function.
-function createLegend(earthquakeMap) {
+function createLegend() {
   // Define altitude ranges and corresponding labels.
   let legendData = [
     { label: '-10 - 10', min: -10, max: 10 },
@@ -89,7 +124,7 @@ function createLegend(earthquakeMap) {
   ];
 
   // Create a legend control.
-  let legend = L.control({ position: 'bottomright' });
+  legend = L.control({ position: 'bottomright' });
 
   // When the legend control is added, insert a div with the class of "info legend".
   legend.onAdd = function () {
@@ -103,35 +138,6 @@ function createLegend(earthquakeMap) {
     }
     return div;
   };
-
-  // Add the legend to the map.
-  legend.addTo(earthquakeMap);
-
-  // Call the updateMapMarkers function to update marker colors.
-  updateMapMarkers();
-}
-
-// Function to update map markers' colors based on legendData.
-function updateMapMarkers() {
-  for (let i = 0; i < earthquakeMarkers.length; i++) {
-    let altitude = earthquakeMarkers[i].altitude;
-    let color;
-
-    // Check if altitude is lower than -10 and set the color for '-10 - 10'.
-    if (altitude < -10) {
-      color = markerColor(-10);
-    }
-    // Check if altitude is higher than 90 and set the color for '90+'.
-    else if (altitude > 90) {
-      color = markerColor(90);
-    }
-    // For other altitudes, calculate the color as usual.
-    else {
-      color = markerColor(altitude);
-    }
-
-    earthquakeMarkers[i].setStyle({ fillColor: color });
-  }
 }
 
 // Initialize the web page
