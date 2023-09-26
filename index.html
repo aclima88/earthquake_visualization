@@ -21,14 +21,29 @@
   <!-- The div that holds our map -->
   <div id="map"></div>
 
+  <!-- Create a div for the legend -->
+  <div id="legend" class="legend"></div>
+  <style>
+    .legend {
+      border: 2px solid #ccc;
+      background-color: white;
+      padding: 10px;
+      border-radius: 5px;
+    }
+  
+    .legend-item {
+      margin-bottom: 5px;
+    }
+  </style>
+
   <!-- Leaflet JS -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
     crossorigin=""></script>
+    
   <!-- D3 JavaScript -->
   <script src="https://d3js.org/d3.v7.min.js"></script>
-  <!-- Our JavaScript -->
-  <script type="text/javascript" src="static/js/logic.js"></script>
+
   <!-- Importing the d3 color scale  -->
   <script src="https://cdn.jsdelivr.net/npm/d3-array@3"></script>
   <script src="https://cdn.jsdelivr.net/npm/d3-color@3"></script>
@@ -37,11 +52,11 @@
   <script src="https://cdn.jsdelivr.net/npm/d3-time@3"></script>
   <script src="https://cdn.jsdelivr.net/npm/d3-time-format@4"></script>
   <script src="https://cdn.jsdelivr.net/npm/d3-scale@4"></script>
-  <script>
-  
-  const x = d3.scaleLinear();
-  
-  </script>
+
+  <!-- Our JavaScript -->
+  <script type="text/javascript" src="static/js/logic.js"></script>
+
+
 </body>
 
 </html>
