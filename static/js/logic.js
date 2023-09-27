@@ -72,7 +72,7 @@ function createMap() {
         earthquakeMap.removeControl(legend);
       }
     });
-    
+
   // Initially, add the legend when the "Earthquake" layer is turned on.
   earthquakeMap.addControl(legend);
 
@@ -93,13 +93,18 @@ function createMarkers(data, earthquakeLayer) {
     // Extract altitude from the coordinates.
     altitude = data[i].geometry.coordinates[2];
 
+    // Extract additional information.
+    let magnitude = data[i].properties.mag;
+    let location = data[i].properties.place;
+    let depth = altitude;
+
     // For each earthquake, create a circle marker.
     circleMarker = L.circleMarker(
       [data[i].geometry.coordinates[1], data[i].geometry.coordinates[0]],
       {
-        radius: data[i].properties.mag * 3,
+        radius: magnitude * 3,
         fillOpacity: 0.75,
-        fillColor: markerColor(altitude), // Set the marker color based on altitude.
+        fillColor: markerColor(altitude),
       }
     );
 
@@ -108,8 +113,13 @@ function createMarkers(data, earthquakeLayer) {
 
     // Add the circle marker to the earthquakeLayer.
     circleMarker.addTo(earthquakeLayer);
+
+    // Create a popup with information.
+    let popupContent = `<strong>Magnitude:</strong> ${magnitude}<br><strong>Location:</strong> ${location}<br><strong>Depth:</strong> ${altitude}`;
+    circleMarker.bindPopup(popupContent);
   }
 }
+
 
 // Create the createLegend function.
 function createLegend() {
